@@ -124,15 +124,7 @@ public final class EpollSocketChannel extends AbstractEpollStreamChannel impleme
 
     @Override
     protected SocketAddress remoteAddress0() {
-        if (remote == null) {
-            // Remote address not know, try to get it now.
-            InetSocketAddress address = fd().remoteAddress();
-            if (address != null) {
-                remote = address;
-            }
-            return address;
-        }
-        return remote;
+        return active ? remote : null;
     }
 
     @Override
@@ -204,16 +196,19 @@ public final class EpollSocketChannel extends AbstractEpollStreamChannel impleme
             checkResolvable((InetSocketAddress) localAddress);
         }
         checkResolvable((InetSocketAddress) remoteAddress);
+        // Always store a reference to the remoteAddress so we can use it later in remoteAddress() once this channel
+        // is active. We do this to still retain the resolved hostname/ip later as otherwise we would only be able
+        // to return an InetSocketAddress that contains an ipaddress and not the hostname itself.
+        remote = (InetSocketAddress) remoteAddress;
         boolean connected = super.doConnect(remoteAddress, localAddress);
         if (connected) {
-            remote = (InetSocketAddress) remoteAddress;
             return true;
         }
         // We always need to set the localAddress even if not connected yet
         //
         // See https://github.com/netty/netty/issues/3463
         local = fd().localAddress();
-        return connected;
+        return false;
     }
 
     private final class EpollSocketChannelUnsafe extends EpollStreamUnsafe {
