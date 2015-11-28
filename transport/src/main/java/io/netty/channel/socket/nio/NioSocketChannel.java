@@ -332,6 +332,19 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
     }
 
     private final class NioSocketChannelUnsafe extends NioByteUnsafe {
+
+        @Override
+        protected void preClose() {
+            // We need to cancel this key of the channel so we may not end up in a eventloop spin because we try
+            // to read or write until the actual close happens which may be later due SO_LINGER handling.
+            // See https://github.com/netty/netty/issues/4449
+            try {
+                doDeregister();
+            } catch (Exception ignore) {
+                // ignore
+            }
+        }
+
         @Override
         protected Executor closeExecutor() {
             try {

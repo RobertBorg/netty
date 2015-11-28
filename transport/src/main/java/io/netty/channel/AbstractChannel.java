@@ -559,9 +559,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 safeSetSuccess(promise);
                 return;
             }
-
             final boolean wasActive = isActive();
             this.outboundBuffer = null; // Disallow adding any messages and flushes to outboundBuffer.
+
+            preClose();
+
             Executor closeExecutor = closeExecutor();
             if (closeExecutor != null) {
                 closeExecutor.execute(new OneTimeTask() {
@@ -604,6 +606,14 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     fireChannelInactiveAndDeregister(wasActive);
                 }
             }
+        }
+
+        /**
+         * Called before the actual close of the underlying transport happens or before it is scheduled. Sub-classes
+         * may override this to implement some logic.
+         */
+        protected void preClose() {
+            // NOOP
         }
 
         private void doClose0(ChannelPromise promise) {

@@ -217,6 +217,19 @@ public final class EpollSocketChannel extends AbstractEpollStreamChannel impleme
     }
 
     private final class EpollSocketChannelUnsafe extends EpollStreamUnsafe {
+
+        @Override
+        protected void preClose() {
+            // We need to remove this channel from the eventloop so we may not end up in a eventloop spin because we try
+            // to read or write until the actual close happens which may be later due SO_LINGER handling.
+            // See https://github.com/netty/netty/issues/4449
+            try {
+                ((EpollEventLoop) eventLoop()).remove(EpollSocketChannel.this);
+            } catch (Exception ignore) {
+                // ignore
+            }
+        }
+
         @Override
         protected Executor closeExecutor() {
             try {
